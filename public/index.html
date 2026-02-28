@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature World: Random Chaos Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+        #canvas-container { width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; }
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            font-size: 24px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .control-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .control-btn.active {
+            background: rgba(100, 200, 255, 0.4);
+            border-color: rgba(100, 200, 255, 0.8);
+        }
+        .notification {
+            animation: slideDown 0.5s ease-out, fadeOut 0.5s ease-in 2.5s forwards;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+        .chaos-text {
+            text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 20px rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- UI Overlay -->
+<div class="fixed top-0 left-0 w-full h-full pointer-events-none z-10">
+    
+    <!-- Title -->
+    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-center pointer-events-auto">
+        <h1 class="text-3xl md:text-4xl font-bold text-white chaos-text tracking-wider">FEATURE WORLD</h1>
+        <p class="text-cyan-400 text-sm mt-1 animate-pulse">RANDOM CHAOS EDITION</p>
+    </div>
+
+    <!-- Notifications Container -->
+    <div id="notifications" class="absolute top-20 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 w-full max-w-md px-4"></div>
+
+    <!-- Controls -->
+    <div class="absolute bottom-8 left-8 pointer-events-auto">
+        <div class="grid grid-cols-3 gap-2">
+            <div></div>
+            <button class="control-btn" id="btn-up">▲</button>
+            <div></div>
+            <button class="control-btn" id="btn-left">◀</button>
+            <button class="control-btn" id="btn-down">▼</button>
+            <button class="control-btn" id="btn-right">▶</button>
+        </div>
+    </div>
+
+    <div class="absolute bottom-8 right-8 pointer-events-auto">
+        <button class="control-btn w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 border-purple-400" id="btn-jump">
+            <span class="text-2xl">⬆️</span>
+        </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="absolute top-4 right-4 text-white text-xs md:text-sm bg-black/50 p-3 rounded-lg backdrop-blur-sm">
+        <div>Speed: <span id="speed-stat" class="text-yellow-400">100%</span></div>
+        <div>Effects: <span id="effect-stat" class="text-green-400">None</span></div>
+        <div>Objects: <span id="object-count" class="text-cyan-400">0</span></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// Game State
+const state = {
+    speed: 1,
+    jumpForce: 0,
+    isJumping: false,
+    invisible: false,
+    inverted: false,
+    giant: false,
+    tiny: false,
+    keys: { up: false, down: false, left: false, right: false },
+    objects: [],
+    effects: []
+};
+
+// Three.js Setup
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(50, 100, 50);
+dirLight.castShadow = true;
+dirLight.shadow.camera.left = -50;
+dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 50;
+dirLight.shadow.camera.bottom = -50;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+scene.add(dirLight);
+
+// Terrain Generation
+const terrainGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
+const terrainMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x3d5c3d,
+    roughness: 0.8,
+    metalness: 0.1
+});
+
+// Add noise to terrain
+const positions = terrainGeometry.attributes.position;
+for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = Math.sin(x * 0.1) * 2 + Math.cos(y * 0.1) * 2 + Math.random() * 0.5;
+    positions.setZ(i, z);
+}
+terrainGeometry.computeVertexNormals();
+
+const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+terrain.rotation.x = -Math.PI / 2;
+terrain.receiveShadow = true;
+scene.add(terrain);
+
+// Character Creation
+const characterGroup = new THREE.Group();
+
+// Body (brown)
+const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.6);
+const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+body.position.y = 0.75;
+body.castShadow = true;
+characterGroup.add(body);
+
+// Head (green)
+const headGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+const headMaterial = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
+const head = new THREE.Mesh(headGeometry, headMaterial);
+head.position.y = 1.9;
+head.castShadow = true;
+characterGroup.add(head);
+
+// Eyes
+const eyeGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.1);
+const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+leftEye.position.set(-0.2, 2, 0.4);
+const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+rightEye.position.set(0.2, 2, 0.4);
+characterGroup.add(leftEye);
+characterGroup.add(rightEye);
+
+// Arms
+const armGeometry = new THREE.BoxGeometry(0.3, 1, 0.3);
+const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
+leftArm.position.set(-0.7, 1, 0);
+const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
+rightArm.position.set(0.7, 1, 0);
+characterGroup.add(leftArm);
+characterGroup.add(rightArm);
+
+// Legs
+const legGeometry = new THREE.BoxGeometry(0.35, 1, 0.35);
+const leftLeg = new THREE.Mesh(legGeometry, bodyMaterial);
+leftLeg.position.set(-0.25, 0.5, 0);
+const rightLeg = new THREE.Mesh(legGeometry, bodyMaterial);
+rightLeg.position.set(0.25, 0.5, 0);
+characterGroup.add(leftLeg);
+characterGroup.add(rightLeg);
+
+characterGroup.position.y = 0;
+scene.add(characterGroup);
+
+// Clouds
+function createCloud() {
+    const cloudGroup = new THREE.Group();
+    const cloudMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        transparent: true, 
+        opacity: 0.8 
+    });
+    
+    for (let i = 0; i < 5; i++) {
+        const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(2 + Math.random() * 2, 8, 8),
+            cloudMaterial
+        );
+        sphere.position.set(
+            (Math.random() - 0.5) * 6,
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 4
+        );
+        cloudGroup.add(sphere);
+    }
+    
+    cloudGroup.position.set(
+        (Math.random() - 0.5) * 100,
+        15 + Math.random() * 10,
+        (Math.random() - 0.5) * 100
+    );
+    
+    scene.add(cloudGroup);
+    return cloudGroup;
+}
+
+const clouds = [];
+for (let i = 0; i < 10; i++) {
+    clouds.push(createCloud());
+}
+
+// Random Objects Generator
+const objectTypes = [
+    { geometry: new THREE.BoxGeometry(1, 1, 1), color: 0xff0000, effect: 'speed', value: 2, name: 'Speed Boost' },
+    { geometry: new THREE.SphereGeometry(0.6, 16, 16), color: 0x00ff00, effect: 'slow', value: 0.5, name: 'Slow Motion' },
+    { geometry: new THREE.ConeGeometry(0.5, 1.5, 8), color: 0x0000ff, effect: 'jump', value: 1.5, name: 'Super Jump' },
+    { geometry: new THREE.OctahedronGeometry(0.7), color: 0xffff00, effect: 'invisible', value: 0, name: 'Invisibility' },
+    { geometry: new THREE.TorusGeometry(0.5, 0.2, 8, 16), color: 0xff00ff, effect: 'giant', value: 2, name: 'Giant Mode' },
+    { geometry: new THREE.DodecahedronGeometry(0.6), color: 0x00ffff, effect: 'tiny', value: 0.5, name: 'Tiny Mode' },
+    { geometry: new THREE.IcosahedronGeometry(0.6), color: 0xff8800, effect: 'chaos', value: 0, name: 'CHAOS MODE' }
+];
+
+function spawnRandomObject() {
+    const type = objectTypes[Math.floor(Math.random() * objectTypes.length)];
+    const material = new THREE.MeshStandardMaterial({ 
+        color: type.color,
+        emissive: type.color,
+        emissiveIntensity: 0.3
+    });
+    const mesh = new THREE.Mesh(type.geometry, material);
+    
+    mesh.position.set(
+        (Math.random() - 0.5) * 80,
+        1 + Math.random() * 3,
+        (Math.random() - 0.5) * 80
+    );
+    
+    mesh.castShadow = true;
+    mesh.userData = { ...type, rotationSpeed: Math.random() * 0.05 };
+    scene.add(mesh);
+    state.objects.push(mesh);
+    
+    document.getElementById('object-count').textContent = state.objects.length;
+}
+
+// Initial spawn
+for (let i = 0; i < 20; i++) {
+    spawnRandomObject();
+}
+
+// Notification System
+function showNotification(text, color = 'white') {
+    const container = document.getElementById('notifications');
+    const notif = document.createElement('div');
+    notif.className = 'notification bg-black/70 backdrop-blur-md px-6 py-3 rounded-full border-2 shadow-lg text-white font-bold text-sm md:text-base';
+    notif.style.borderColor = color;
+    notif.style.color = color;
+    notif.textContent = text;
+    container.appendChild(notif);
+    
+    setTimeout(() => notif.remove(), 3000);
+}
+
+// Effect Handlers
+const effects = {
+    speed: () => {
+        state.speed = 3;
+        showNotification('⚡ SPEED BOOST ACTIVATED!', '#ffff00');
+        document.getElementById('effect-stat').textContent = 'Speed Boost';
+        document.getElementById('effect-stat').className = 'text-yellow-400';
+        setTimeout(() => { state.speed = 1; resetEffect(); }, 5000);
+    },
+    slow: () => {
+        state.speed = 0.3;
+        showNotification('🐌 SLOW MOTION...', '#00ff00');
+        document.getElementById('effect-stat').textContent = 'Slow Motion';
+        document.getElementById('effect-stat').className = 'text-green-400';
+        setTimeout(() => { state.speed = 1; resetEffect(); }, 5000);
+    },
+    jump: () => {
+        state.jumpForce = 0.4;
+        showNotification('🚀 SUPER JUMP!', '#0000ff');
+    },
+    invisible: () => {
+        state.invisible = true;
+        characterGroup.traverse(child => {
+            if (child.material) child.material.transparent = true;
+            if (child.material) child.material.opacity = 0.3;
+        });
+        showNotification('👻 INVISIBILITY!', '#00ffff');
+        document.getElementById('effect-stat').textContent = 'Invisible';
+        document.getElementById('effect-stat').className = 'text-cyan-400';
+        setTimeout(() => {
+            state.invisible = false;
+            characterGroup.traverse(child => {
+                if (child.material) child.material.opacity = 1;
+            });
+            resetEffect();
+        }, 5000);
+    },
+    giant: () => {
+        state.giant = true;
+        characterGroup.scale.set(2, 2, 2);
+        showNotification('🦖 GIANT MODE!', '#ff00ff');
+        document.getElementById('effect-stat').textContent = 'Giant';
+        document.getElementById('effect-stat').className = 'text-purple-400';
+        setTimeout(() => {
+            state.giant = false;
+            characterGroup.scale.set(1, 1, 1);
+            resetEffect();
+        }, 5000);
+    },
+    tiny: () => {
+        state.tiny = true;
+        characterGroup.scale.set(0.5, 0.5, 0.5);
+        showNotification('🐜 TINY MODE!', '#00ffff');
+        document.getElementById('effect-stat').textContent = 'Tiny';
+        document.getElementById('effect-stat').className = 'text-cyan-400';
+        setTimeout(() => {
+            state.tiny = false;
+            characterGroup.scale.set(1, 1, 1);
+            resetEffect();
+        }, 5000);
+    },
+    chaos: () => {
+        showNotification('🔥 CHAOS MODE ENGAGED!', '#ff0000');
+        document.getElementById('effect-stat').textContent = 'CHAOS';
+        document.getElementById('effect-stat').className = 'text-red-500 animate-pulse';
+        
+        // Random effects
+        const randomEffects = ['speed', 'slow', 'invisible', 'giant', 'tiny'];
+        randomEffects.forEach((eff, i) => {
+            setTimeout(() => effects[eff](), i * 1000);
+        });
+        
+        // Spawn more objects
+        for (let i = 0; i < 10; i++) {
+            setTimeout(spawnRandomObject, i * 200);
+        }
+        
+        setTimeout(resetEffect, 8000);
+    }
+};
+
+function resetEffect() {
+    if (!state.invisible && !state.giant && !state.tiny && state.speed === 1) {
+        document.getElementById('effect-stat').textContent = 'None';
+        document.getElementById('effect-stat').className = 'text-gray-400';
+    }
+}
+
+// Controls
+const btnUp = document.getElementById('btn-up');
+const btnDown = document.getElementById('btn-down');
+const btnLeft = document.getElementById('btn-left');
+const btnRight = document.getElementById('btn-right');
+const btnJump = document.getElementById('btn-jump');
+
+function setupButton(btn, key) {
+    btn.addEventListener('mousedown', () => { state.keys[key] = true; btn.classList.add('active'); });
+    btn.addEventListener('mouseup', () => { state.keys[key] = false; btn.classList.remove('active'); });
+    btn.addEventListener('mouseleave', () => { state.keys[key] = false; btn.classList.remove('active'); });
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); state.keys[key] = true; btn.classList.add('active'); });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); state.keys[key] = false; btn.classList.remove('active'); });
+}
+
+setupButton(btnUp, 'up');
+setupButton(btnDown, 'down');
+setupButton(btnLeft, 'left');
+setupButton(btnRight, 'right');
+
+btnJump.addEventListener('mousedown', jump);
+btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+
+function jump() {
+    if (!state.isJumping) {
+        state.isJumping = true;
+        state.jumpForce = state.jumpForce || 0.3;
+    }
+}
+
+// Keyboard controls
+window.addEventListener('keydown', (e) => {
+    switch(e.key) {
+        case 'ArrowUp': case 'w': state.keys.up = true; break;
+        case 'ArrowDown': case 's': state.keys.down = true; break;
+        case 'ArrowLeft': case 'a': state.keys.left = true; break;
+        case 'ArrowRight': case 'd': state.keys.right = true; break;
+        case ' ': jump(); break;
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    switch(e.key) {
+        case 'ArrowUp': case 'w': state.keys.up = false; break;
+        case 'ArrowDown': case 's': state.keys.down = false; break;
+        case 'ArrowLeft': case 'a': state.keys.left = false; break;
+        case 'ArrowRight': case 'd': state.keys.right = false; break;
+    }
+});
+
+// Animation Loop
+let time = 0;
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    const delta = clock.getDelta();
+    time += delta;
+    
+    // Character movement
+    const moveSpeed = 5 * state.speed * delta;
+    let moved = false;
+    
+    if (state.keys.up) { characterGroup.position.z -= moveSpeed; moved = true; }
+    if (state.keys.down) { characterGroup.position.z += moveSpeed; moved = true; }
+    if (state.keys.left) { characterGroup.position.x -= moveSpeed; moved = true; }
+    if (state.keys.right) { characterGroup.position.x += moveSpeed; moved = true; }
+    
+    // Boundary check
+    characterGroup.position.x = Math.max(-90, Math.min(90, characterGroup.position.x));
+    characterGroup.position.z = Math.max(-90, Math.min(90, characterGroup.position.z));
+    
+    // Walking animation
+    if (moved && !state.isJumping) {
+        leftLeg.rotation.x = Math.sin(time * 10) * 0.5;
+        rightLeg.rotation.x = Math.sin(time * 10 + Math.PI) * 0.5;
+        leftArm.rotation.x = Math.sin(time * 10 + Math.PI) * 0.5;
+        rightArm.rotation.x = Math.sin(time * 10) * 0.5;
+    } else {
+        leftLeg.rotation.x = 0;
+        rightLeg.rotation.x = 0;
+        leftArm.rotation.x = 0;
+        rightArm.rotation.x = 0;
+    }
+    
+    // Jumping physics
+    if (state.isJumping) {
+        characterGroup.position.y += state.jumpForce;
+        state.jumpForce -= 0.015;
+        
+        if (characterGroup.position.y <= 0) {
+            characterGroup.position.y = 0;
+            state.isJumping = false;
+            state.jumpForce = 0;
+        }
+    }
+    
+    // Camera follow
+    camera.position.x = characterGroup.position.x;
+    camera.position.z = characterGroup.position.z + 10;
+    camera.position.y = characterGroup.position.y + 8;
+    camera.lookAt(characterGroup.position);
+    
+    // Animate clouds
+    clouds.forEach((cloud, i) => {
+        cloud.position.x += Math.sin(time * 0.1 + i) * 0.02;
+        cloud.rotation.y += 0.001;
+    });
+    
+    // Animate and check collision with objects
+    state.objects.forEach((obj, index) => {
+        obj.rotation.x += obj.userData.rotationSpeed;
+        obj.rotation.y += obj.userData.rotationSpeed * 1.5;
+        obj.position.y += Math.sin(time * 2 + index) * 0.01;
+        
+        // Collision detection
+        const dist = characterGroup.position.distanceTo(obj.position);
+        if (dist < 2) {
+            // Trigger effect
+            if (effects[obj.userData.effect]) {
+                effects[obj.userData.effect]();
+            }
+            
+            // Remove object and spawn new one
+            scene.remove(obj);
+            state.objects.splice(index, 1);
+            setTimeout(spawnRandomObject, 2000);
+        }
+    });
+    
+    // Random notifications
+    if (Math.random() < 0.001) {
+        const messages = [
+            'Chaos is beautiful!',
+            'Keep exploring!',
+            'What will you find next?',
+            'The world shifts...',
+            'Randomness prevails!'
+        ];
+        showNotification(messages[Math.floor(Math.random() * messages.length)], '#ffffff');
+    }
+    
+    // Update speed stat
+    document.getElementById('speed-stat').textContent = Math.round(state.speed * 100) + '%';
+    
+    renderer.render(scene, camera);
+}
+
+// Handle resize
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Start
+animate();
+
+// Initial notification
+setTimeout(() => {
+    showNotification('Welcome to Feature World! Use controls or WASD to move!', '#00ffff');
+}, 1000);
+</script>
+
+</body>
+</html>
+
