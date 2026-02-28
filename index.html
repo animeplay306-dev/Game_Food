@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Feature World: Random Chaos Edition</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff0000">
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
@@ -541,11 +548,6 @@ animate();
 setTimeout(() => {
     showNotification('Welcome to Feature World! Use controls or WASD to move!', '#00ffff');
 }, 1000);
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js")
-    .then(() => console.log("Service Worker Registered"))
-    .catch(err => console.log(err));
-}
 </script>
 
 </body>
