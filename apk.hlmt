@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Food Game - أفضل لعبة طعام عربية مجانية">
+    <meta name="theme-color" content="#e94560">
+    <title>Food Game - لعبة الطعام الشيقة</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation" id="bgAnimation"></div>
+
+    <!-- Loading Screen -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">جاري تحميل اللعبة...</div>
+    </div>
+
+    <!-- Install PWA Button -->
+    <button class="install-btn" id="installBtn" onclick="installPWA()">
+        📲 ثبت التطبيق
+    </button>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">🎮 FOOD GAME</div>
+        <div class="tagline">أفضل لعبة طعام عربية</div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="game-icon">🍔</div>
+        <h1>حمّل لعبة Food الآن!</h1>
+        <p class="description">
+            انغمس في عالم الطعام الشيق! لعبة مسلية مليئة بالتحديات والمغامرات. 
+            جاهز لتصبح سيد الطعام؟ 🍕🍟🍔
+        </p>
+        
+        <!-- Version Info -->
+        <div class="version-info">
+            <div class="version-item">
+                🔵 <span>الإصدار:</span> 1.0.0
+            </div>
+            <div class="version-item">
+                🟢 <span>آخر تحديث:</span> 2026
+            </div>
+            <div class="version-item">
+                👑 <span>المطور:</span> عمر
+            </div>
+            <div class="version-item">
+                📦 <span>الحجم:</span> 50MB
+            </div>
+        </div>
+        
+        <div class="download-section">
+            <a href="game.apk" class="btn btn-primary" download="FoodGame_v1.0.0.apk" onclick="showLoading()">
+                ⬇️ تحميل APK
+            </a>
+            <button class="btn btn-secondary" onclick="showComingSoon()">
+                ▶️ العب أونلاين
+            </button>
+        </div>
+
+        <div class="file-info">
+            <span>✅ مجانية 100%</span>
+            <span>📱 Android 5.0+</span>
+            <span>🔒 آمنة وموثوقة</span>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-item">
+            <span class="stat-number">10K+</span>
+            <span class="stat-label">تحميل</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">4.8⭐</span>
+            <span class="stat-label">تقييم</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">50MB</span>
+            <span class="stat-label">حجم اللعبة</span>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <section class="features">
+        <h2 class="section-title">✨ مميزات اللعبة</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3 class="feature-title">جرافيك رائع</h3>
+                <p class="feature-desc">تصميم عصري وألوان جذابة تناسب جميع الأعمار</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3 class="feature-title">تحديات يومية</h3>
+                <p class="feature-desc">مهام جديدة كل يوم للحفاظ على الحماس</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏆</div>
+                <h3 class="feature-title">نظام نقاط</h3>
+                <p class="feature-desc">تنافس مع أصدقائك على المراكز الأولى</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3 class="feature-title">بدون إنترنت</h3>
+                <p class="feature-desc">استمتع باللعبة في أي وقت وفي أي مكان</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots -->
+    <section class="screenshots">
+        <h2 class="section-title">📸 صور من اللعبة</h2>
+        <div class="screenshots-grid">
+            <div class="screenshot">🍕 مستوى 1</div>
+            <div class="screenshot">🍟 مستوى 2</div>
+            <div class="screenshot">🍔 مستوى 3</div>
+        </div>
+    </section>
+
+    <!-- TikTok Section -->
+    <section class="tiktok-section">
+        <h2 class="tiktok-title">🎵 تابع <span>اللعبة</span> على تيك توك</h2>
+        <p class="tiktok-desc">
+            تابع كل التحديثات + فيديوهات اللعبة + الإصدارات الجديدة 🚀
+        </p>
+        
+        <div class="tiktok-stats">
+            <div class="tiktok-stat">
+                <span class="tiktok-stat-number">📹</span>
+                <span class="tiktok-stat-label">فيديوهات يومية</span>
+            </div>
+            <div class="tiktok-stat">
+                <span class="tiktok-stat-number">🔥</span>
+                <span class="tiktok-stat-label">تحديثات حصرية</span>
+            </div>
+            <div class="tiktok-stat">
+                <span class="tiktok-stat-number">💬</span>
+                <span class="tiktok-stat-label">تفاعل مباشر</span>
+            </div>
+        </div>
+
+        <a href="https://www.tiktok.com/@animeplay885" target="_blank" class="btn btn-tiktok" style="margin-top: 1rem;">
+            🎵 افتح حسابي على تيك توك
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="social-links">
+            <a href="#" title="Facebook">📘</a>
+            <a href="#" title="Instagram">📸</a>
+            <a href="#" title="Twitter">🐦</a>
+            <a href="#" title="Email">📧</a>
+        </div>
+        <p>© 2025 Food Game - جميع الحقوق محفوظة</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">صنع ب❤️ بواسطة عمر</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
